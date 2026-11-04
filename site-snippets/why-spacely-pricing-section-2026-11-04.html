@@ -1,0 +1,91 @@
+<section class="py-20 bg-white" id="pricing">
+<style>#pricing ul{list-style:none;padding:0;margin:0}#pricing .price-num{font-variant-numeric:tabular-nums;line-height:1}#pricing h2,#pricing h3{text-wrap:balance}</style>
+
+  <div class="container mx-auto px-4 max-w-6xl">
+    <div class="text-center mb-10">
+      <h2 class="text-3xl md:text-5xl font-extrabold text-brand-black mb-5">בחרו מסלול, והספייס שלכם באוויר</h2>
+      <p class="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">כל המסלולים כוללים עמוד פרסום מלא, טלפון וכתובת גלויים, ופניות ישירות אליכם בלי עמלה.</p>
+      <div class="flex flex-wrap justify-center gap-3 mt-6 text-sm font-semibold text-brand-black">
+        <span class="bg-brand-champagne rounded-full px-4 py-2">בלי עמלה על פניות</span>
+        <span class="bg-brand-champagne rounded-full px-4 py-2">בלי התחייבות</span>
+        <span class="bg-brand-champagne rounded-full px-4 py-2">ביטול בכל רגע</span>
+        <span class="bg-brand-champagne rounded-full px-4 py-2">הלקוח שלכם מהרגע הראשון</span>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-8 items-start mt-14">
+
+      <!-- BASIC: מסלול התנסות -->
+      <div class="relative bg-brand-beige border-2 border-brand-gold rounded-2xl p-7 md:p-8 flex flex-col gap-6 shadow-xl">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-brand-black text-white px-6 py-1.5 rounded-full text-base font-bold whitespace-nowrap">מסלול התנסות</div>
+        <div class="text-center pt-2">
+          <h3 class="text-2xl font-bold text-brand-black">BASIC</h3>
+          <p class="text-base font-semibold text-brand-goldDark mt-2">נסו בעצמכם, בלי להרגיש שזרקתם כסף</p>
+        </div>
+        <div class="text-center bg-white rounded-xl py-5 px-3 border border-brand-gold/30">
+          <div class="flex items-baseline justify-center gap-2"><span class="price-num text-6xl font-extrabold text-brand-black">29</span><span class="text-2xl font-bold text-brand-black">₪</span></div>
+          <div class="text-sm text-gray-600 mt-2">לחודש + מע״מ, ב־3 החודשים הראשונים</div>
+          <div class="text-sm font-semibold text-brand-goldDark mt-2">מהחודש הרביעי: 69 ₪ לחודש + מע״מ</div>
+        </div>
+        <ul class="space-y-3 text-brand-black">
+          <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>פרסום של עד 2 ספייסים</li>
+          <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>עמוד פרסום מלא לכל ספייס</li>
+          <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>טלפון וכתובת גלויים למי שמחפש</li>
+          <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>הופעה בתוצאות החיפוש לפי עיר</li>
+          <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>פניות ישירות אליכם, בלי עמלה</li>
+        </ul>
+        <button type="button" class="btn-gold w-full py-4 rounded-xl font-bold text-lg" onclick="document.getElementById('propertyType').value='BASIC'; document.getElementById('lead-form-section').scrollIntoView({behavior:'smooth'});">מתחילים ב־29 ₪</button>
+        <p class="text-center text-sm text-gray-600 -mt-2">בערך שקל ליום, והקליניקה שלכם באוויר</p>
+      </div>
+
+      <!-- PRO -->
+      <div class="relative bg-brand-black text-white border-2 border-brand-gold rounded-2xl p-7 md:p-8 flex flex-col gap-6 shadow-2xl">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-brand-gold text-white px-6 py-1.5 rounded-full text-base font-bold whitespace-nowrap">הכי פופולרי</div>
+        <div class="text-center pt-2">
+          <h3 class="text-2xl font-bold text-white">PRO</h3>
+          <p class="text-base font-semibold text-brand-gold mt-2">לבלוט כשמחפשים</p>
+        </div>
+        <div class="text-center rounded-xl py-5 px-3 border border-white/15" style="background:rgba(255,255,255,.05)">
+          <div class="flex items-baseline justify-center gap-2"><span class="price-num text-6xl font-extrabold text-brand-gold">98</span><span class="text-2xl font-bold text-brand-gold">₪</span></div>
+          <div class="text-sm text-gray-300 mt-2">לחודש + מע״מ</div>
+          <div class="text-sm font-semibold text-white mt-2">פחות מ־3.5 ₪ ליום</div>
+        </div>
+        <div>
+          <p class="text-sm text-gray-300 mb-3">כל מה שבבייסיק, ועוד:</p>
+          <ul class="space-y-3 text-gray-100">
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>פרסום של עד 3 ספייסים</li>
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>תג "מומלץ" שמבליט את הספייס</li>
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>הופעה באזור הספייסים המומלצים</li>
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>קדימות לפני בייסיק בתוצאות החיפוש</li>
+          </ul>
+        </div>
+        <button type="button" class="btn-gold w-full py-4 rounded-xl font-bold text-lg" onclick="document.getElementById('propertyType').value='PRO'; document.getElementById('lead-form-section').scrollIntoView({behavior:'smooth'});">להצטרפות לפרו</button>
+      </div>
+
+      <!-- PRO BOOST -->
+      <div class="bg-white text-brand-black border border-gray-200 rounded-2xl p-7 md:p-8 flex flex-col gap-6">
+        <div class="text-center pt-2">
+          <h3 class="text-2xl font-bold text-brand-black">PRO BOOST</h3>
+          <p class="text-base font-semibold text-brand-goldDark mt-2">להגיע גם למי שעדיין לא חיפש</p>
+        </div>
+        <div class="text-center bg-brand-beige rounded-xl py-5 px-3 border border-gray-200">
+          <div class="flex items-baseline justify-center gap-2"><span class="price-num text-6xl font-extrabold text-brand-black">299</span><span class="text-2xl font-bold text-brand-black">₪</span></div>
+          <div class="text-sm text-gray-600 mt-2">לחודש הראשון + מע״מ</div>
+          <div class="text-sm font-semibold text-brand-goldDark mt-2">לאחר מכן 349 ₪ לחודש + מע״מ</div>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600 mb-3">כל מה שבפרו, ועוד:</p>
+          <ul class="space-y-3">
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>פרסום של עד 5 ספייסים</li>
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>מודעה ממומנת ייעודית לספייס שלכם</li>
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>קישור ישיר מהמודעה לעמוד הספייס</li>
+            <li class="flex items-start gap-2"><span class="text-brand-gold font-bold">✓</span>חשיפה גם לאנשי מקצוע שלא מכירים את ספייסלי</li>
+          </ul>
+        </div>
+        <button type="button" class="btn-gold w-full py-4 rounded-xl font-bold text-lg" onclick="document.getElementById('propertyType').value='BOOST'; document.getElementById('lead-form-section').scrollIntoView({behavior:'smooth'});">להצטרפות לבוסט</button>
+      </div>
+    </div>
+
+    <p class="text-center text-sm text-gray-500 mt-10">כל המחירים לפני מע״מ. באזור האישי תוכלו לעקוב אחרי כמות הפניות שקיבלתם דרך האתר.</p>
+  </div>
+</section>
