@@ -180,12 +180,13 @@ add_action( 'template_redirect', function () {
 }, 0 );
 
 /* ---------- 3a) paid owners: phone required on the edit form ---------- */
-add_filter( 'hivepress/v1/forms/listing_update', function ( $form ) {
-	if ( is_user_logged_in() && isset( $form['fields']['phone_num'] ) && spacely_up_is_paid( get_current_user_id() ) ) {
-		$form['fields']['phone_num']['required'] = true;
+// The phone field is added late (by plan/attribute rules), so set "required" on the final field list.
+add_filter( 'hivepress/v1/forms/listing_update/fields', function ( $fields, $form = null ) {
+	if ( is_user_logged_in() && isset( $fields['phone_num'] ) && spacely_up_is_paid( get_current_user_id() ) ) {
+		$fields['phone_num']['required'] = true;
 	}
-	return $form;
-}, 1000 );
+	return $fields;
+}, 1000, 2 );
 
 /* ---------- 3b) notice on the edit-listing page ---------- */
 add_action( 'wp_footer', function () {
@@ -228,11 +229,12 @@ add_action( 'wp_footer', function () {
 		var html = <?php echo wp_json_encode( $box ); ?>;
 		function put() {
 			if (document.getElementById('spacely-up-notice')) return;
-			var form = document.querySelector('.hp-form--listing-update, .hp-form--listing-submit, form.hp-form');
+			// The edit form, not the hidden "delete" popup form that comes first on the page.
+			var form = document.querySelector('form.hp-form--listing-update') || document.querySelector('form.hp-form--listing-submit');
 			if (!form) return;
 			form.insertAdjacentHTML('beforebegin', html);
 			var phone = document.querySelector('[name="phone_num"]');
-			if (phone && !phone.value) { phone.style.borderColor = '#d63638'; }
+			if (phone) { phone.required = true; if (!phone.value) { phone.style.borderColor = '#d63638'; } }
 		}
 		if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', put); } else { put(); }
 	})();
