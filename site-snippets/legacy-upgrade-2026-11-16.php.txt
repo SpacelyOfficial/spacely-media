@@ -180,12 +180,26 @@ add_action( 'template_redirect', function () {
 }, 0 );
 
 /* ---------- 3a) paid owners: phone required on the edit form ---------- */
-// The phone field is added late (by plan/attribute rules), so set "required" on the final field list.
-add_filter( 'hivepress/v1/forms/listing_update/fields', function ( $fields, $form = null ) {
-	if ( is_user_logged_in() && isset( $fields['phone_num'] ) && spacely_up_is_paid( get_current_user_id() ) ) {
-		$fields['phone_num']['required'] = true;
+add_filter( 'hivepress/v1/forms/listing_update', function ( $form ) {
+	if ( is_user_logged_in() && isset( $form['fields']['phone_num'] ) && spacely_up_is_paid( get_current_user_id() ) ) {
+		$form['fields']['phone_num']['required'] = true;
 	}
-	return $fields;
+	return $form;
+}, PHP_INT_MAX );
+
+// Server-side check on save (works even if another plugin resets the field to optional).
+add_filter( 'hivepress/v1/forms/listing_update/errors', function ( $errors, $form ) {
+	if ( ! is_user_logged_in() || ! is_object( $form ) || ! method_exists( $form, 'get_fields' ) ) {
+		return $errors;
+	}
+	$fields = $form->get_fields();
+	if ( ! isset( $fields['phone_num'] ) || ! spacely_up_is_paid( get_current_user_id() ) ) {
+		return $errors;
+	}
+	if ( '' === trim( (string) $form->get_value( 'phone_num' ) ) ) {
+		$errors[] = 'נא להוסיף מספר טלפון, כדי שבעלי מקצוע יוכלו להתקשר ולשלוח לכם וואטסאפ.';
+	}
+	return $errors;
 }, 1000, 2 );
 
 /* ---------- 3b) notice on the edit-listing page ---------- */
