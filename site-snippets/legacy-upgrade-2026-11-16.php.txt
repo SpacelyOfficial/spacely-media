@@ -1,0 +1,384 @@
+/**
+ * Spacely - שדרוג בעלי ספייסים מהמסלול הישן (legacy upgrade)
+ *
+ * 1) Personal one-click link for legacy owners:  https://spacely.co.il/?spacely_up=TOKEN&plan=basic|pro
+ *    Logs the owner in (no password), then sends them to /select-plan/<plan>/ -> checkout.
+ *    Token = user id + expiry + signature (45 days). Never logs in admins/editors.
+ *    If the owner already pays, it just opens their listing.
+ * 2) After a paid plan order, an owner who ALREADY has a listing goes to edit THAT listing
+ *    (with a "your plan is active" notice), instead of the new-listing form (snippet 129 sends
+ *    everyone to /submit-listing/?from=plan). Owners without a listing are not affected.
+ * 3) Paid owners: phone number is required on the edit-listing form, and a notice asks them
+ *    to add it when it is missing (without a phone there is no "show phone" / WhatsApp).
+ * 4) Unsubscribe link for marketing mail: ?spacely_unsub=TOKEN (user meta spacely_no_marketing).
+ * 5) Admin page: Tools > "ספייסלי - שדרוג בעלי ספייסים ישנים": list of legacy owners,
+ *    test link for one owner, preview email to info@ only, and (after approval) batch send.
+ *
+ * Undo: deactivate this snippet. Nothing else on the site is changed.
+ */
+
+if ( ! function_exists( 'spacely_up_plans' ) ) {
+
+function spacely_up_plans() {
+	return array( 'basic' => 6743, 'pro' => 4938 );
+}
+
+function spacely_up_sig( $data ) {
+	return substr( hash_hmac( 'sha256', $data, wp_salt( 'auth' ) ), 0, 24 );
+}
+
+function spacely_up_token( $uid, $days = 45 ) {
+	$uid = (int) $uid;
+	$exp = time() + $days * DAY_IN_SECONDS;
+	return $uid . '-' . $exp . '-' . spacely_up_sig( 'up|' . $uid . '|' . $exp );
+}
+
+function spacely_up_check_token( $token ) {
+	if ( ! preg_match( '/^(\d+)-(\d+)-([a-f0-9]{24})$/', (string) $token, $m ) ) {
+		return 0;
+	}
+	$uid = (int) $m[1];
+	$exp = (int) $m[2];
+	if ( $exp < time() ) {
+		return 0;
+	}
+	if ( ! hash_equals( spacely_up_sig( 'up|' . $uid . '|' . $exp ), $m[3] ) ) {
+		return 0;
+	}
+	return $uid;
+}
+
+function spacely_unsub_token( $uid ) {
+	return (int) $uid . '-' . spacely_up_sig( 'unsub|' . (int) $uid );
+}
+
+function spacely_up_link( $uid, $plan = 'basic' ) {
+	return add_query_arg( array( 'spacely_up' => spacely_up_token( $uid ), 'plan' => $plan ), home_url( '/' ) );
+}
+
+function spacely_unsub_link( $uid ) {
+	return add_query_arg( 'spacely_unsub', spacely_unsub_token( $uid ), home_url( '/' ) );
+}
+
+function spacely_up_is_paid( $uid ) {
+	return function_exists( 'wcs_user_has_subscription' ) && wcs_user_has_subscription( (int) $uid, '', array( 'active', 'pending-cancel' ) );
+}
+
+/** Safe for one-click login: an ordinary owner account, never staff. */
+function spacely_up_login_allowed( $user ) {
+	if ( ! $user || ! $user->exists() ) {
+		return false;
+	}
+	foreach ( array( 'manage_options', 'edit_others_posts', 'manage_woocommerce', 'edit_users' ) as $cap ) {
+		if ( user_can( $user, $cap ) ) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** Owner's listings, newest first. */
+function spacely_up_listings( $uid, $status = array( 'publish', 'pending' ) ) {
+	return get_posts( array(
+		'post_type'   => 'hp_listing',
+		'author'      => (int) $uid,
+		'post_status' => $status,
+		'numberposts' => 20,
+		'orderby'     => 'date',
+		'order'       => 'DESC',
+		'fields'      => 'ids',
+	) );
+}
+
+function spacely_up_edit_url( $listing_id ) {
+	if ( function_exists( 'hivepress' ) ) {
+		$url = hivepress()->router->get_url( 'listing_edit_page', array( 'listing_id' => (int) $listing_id ) );
+		if ( $url ) {
+			return $url;
+		}
+	}
+	return home_url( '/account/listings/' );
+}
+
+/** Message page in Spacely style (RTL). */
+function spacely_up_message_page( $title, $text ) {
+	$html = '<div dir="rtl" style="text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:1.7">'
+		. '<h2 style="margin-top:0">' . esc_html( $title ) . '</h2><p>' . esc_html( $text ) . '</p>'
+		. '<p><a href="' . esc_url( home_url( '/' ) ) . '">לאתר ספייסלי</a></p></div>';
+	wp_die( $html, esc_html( $title ), array( 'response' => 200 ) );
+}
+
+/* ---------- 1) one-click upgrade link ---------- */
+add_action( 'init', function () {
+	if ( empty( $_GET['spacely_up'] ) || is_admin() || wp_doing_ajax() ) {
+		return;
+	}
+	$plans    = spacely_up_plans();
+	$plan_key = isset( $_GET['plan'] ) ? sanitize_key( wp_unslash( $_GET['plan'] ) ) : 'basic';
+	$plan_id  = isset( $plans[ $plan_key ] ) ? $plans[ $plan_key ] : $plans['basic'];
+	$uid      = spacely_up_check_token( sanitize_text_field( wp_unslash( $_GET['spacely_up'] ) ) );
+	$user     = $uid ? get_userdata( $uid ) : false;
+
+	// Staff (Liron / admins) testing a link: do not switch accounts, just show the plan step.
+	if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+		wp_safe_redirect( home_url( '/our-plans/' ) );
+		exit;
+	}
+
+	if ( ! $uid || ! spacely_up_login_allowed( $user ) ) {
+		// Expired or broken link: normal login, then the plans page.
+		wp_safe_redirect( home_url( '/our-plans/' ) );
+		exit;
+	}
+
+	if ( get_current_user_id() !== $uid ) {
+		wp_clear_auth_cookie();
+		wp_set_current_user( $uid );
+		wp_set_auth_cookie( $uid, true );
+	}
+	update_user_meta( $uid, 'spacely_up_clicked', time() );
+
+	// Already paying: go to the listing, nothing to buy.
+	if ( spacely_up_is_paid( $uid ) ) {
+		$ids = spacely_up_listings( $uid );
+		wp_safe_redirect( $ids ? spacely_up_edit_url( $ids[0] ) : home_url( '/account/' ) );
+		exit;
+	}
+
+	wp_safe_redirect( home_url( '/select-plan/' . $plan_id . '/' ) );
+	exit;
+}, 1 );
+
+/* ---------- 4) unsubscribe ---------- */
+add_action( 'init', function () {
+	if ( empty( $_GET['spacely_unsub'] ) || is_admin() ) {
+		return;
+	}
+	$t = sanitize_text_field( wp_unslash( $_GET['spacely_unsub'] ) );
+	if ( preg_match( '/^(\d+)-([a-f0-9]{24})$/', $t, $m ) && hash_equals( spacely_up_sig( 'unsub|' . (int) $m[1] ), $m[2] ) ) {
+		update_user_meta( (int) $m[1], 'spacely_no_marketing', time() );
+		spacely_up_message_page( 'הוסרת מרשימת הדיוור', 'לא נשלח אליך יותר מיילים שיווקיים מספייסלי. מיילים על החשבון והתשלומים שלך ימשיכו להגיע כרגיל.' );
+	}
+	spacely_up_message_page( 'הקישור לא תקין', 'אפשר לכתוב לנו ל-info@spacely.co.il ונסיר אותך ידנית.' );
+}, 1 );
+
+/* ---------- 2) after payment: back to the EXISTING listing ---------- */
+add_action( 'template_redirect', function () {
+	if ( is_admin() || ! is_user_logged_in() ) {
+		return;
+	}
+	$path = untrailingslashit( (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '', PHP_URL_PATH ) );
+	if ( '/submit-listing' !== $path || empty( $_GET['from'] ) || 'plan' !== sanitize_text_field( wp_unslash( $_GET['from'] ) ) ) {
+		return;
+	}
+	$ids = spacely_up_listings( get_current_user_id() );
+	if ( ! $ids ) {
+		return; // new owner: keeps the normal "add your space" step
+	}
+	wp_safe_redirect( add_query_arg( 'spacely_upgraded', '1', spacely_up_edit_url( $ids[0] ) ) );
+	exit;
+}, 0 );
+
+/* ---------- 3a) paid owners: phone required on the edit form ---------- */
+add_filter( 'hivepress/v1/forms/listing_update', function ( $form ) {
+	if ( is_user_logged_in() && isset( $form['fields']['phone_num'] ) && spacely_up_is_paid( get_current_user_id() ) ) {
+		$form['fields']['phone_num']['required'] = true;
+	}
+	return $form;
+}, 1000 );
+
+/* ---------- 3b) notice on the edit-listing page ---------- */
+add_action( 'wp_footer', function () {
+	if ( ! is_user_logged_in() || ! function_exists( 'hivepress' ) ) {
+		return;
+	}
+	if ( 'listing_edit_page' !== hivepress()->router->get_current_route_name() ) {
+		return;
+	}
+	$uid = get_current_user_id();
+	if ( ! spacely_up_is_paid( $uid ) ) {
+		return;
+	}
+	$listing_id = 0;
+	$req_path   = (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '', PHP_URL_PATH );
+	if ( preg_match( '/(\d+)\/?$/', $req_path, $mm ) && (int) get_post_field( 'post_author', (int) $mm[1] ) === $uid ) {
+		$listing_id = (int) $mm[1];
+	}
+	if ( ! $listing_id ) {
+		$ids        = spacely_up_listings( $uid );
+		$listing_id = $ids ? $ids[0] : 0;
+	}
+	$no_phone = $listing_id && '' === trim( (string) get_post_meta( $listing_id, 'hp_phone_num', true ) );
+	$upgraded = ! empty( $_GET['spacely_upgraded'] );
+	if ( ! $upgraded && ! $no_phone ) {
+		return;
+	}
+	$box = '';
+	if ( $upgraded ) {
+		$box .= '<p style="margin:0 0 6px"><strong>המסלול שלכם פעיל! 🎉</strong></p>'
+			. '<p style="margin:0 0 6px">הספייס הקיים שלכם כבר עודכן: הוא מסומן כמומלץ ומאומת, ובעלי מקצוע יכולים לראות את הטלפון ולשלוח לכם וואטסאפ. אין צורך להעלות אותו מחדש.</p>';
+	}
+	if ( $no_phone ) {
+		$box .= '<p style="margin:0;color:#8a1f1f"><strong>חסר מספר טלפון בספייס.</strong> הוסיפו אותו בשדה "מספר טלפון" למטה ולחצו שמירה, כדי שבעלי מקצוע יוכלו להתקשר ולשלוח לכם וואטסאפ.</p>';
+	}
+	$box = '<div id="spacely-up-notice" dir="rtl" style="text-align:right;border:1px solid #cfe8d6;background:#f1fbf4;border-radius:10px;padding:16px;margin:0 0 20px;font-size:16px;line-height:1.6">' . $box . '</div>';
+	?>
+	<script>
+	(function () {
+		var html = <?php echo wp_json_encode( $box ); ?>;
+		function put() {
+			if (document.getElementById('spacely-up-notice')) return;
+			var form = document.querySelector('.hp-form--listing-update, .hp-form--listing-submit, form.hp-form');
+			if (!form) return;
+			form.insertAdjacentHTML('beforebegin', html);
+			var phone = document.querySelector('[name="phone_num"]');
+			if (phone && !phone.value) { phone.style.borderColor = '#d63638'; }
+		}
+		if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', put); } else { put(); }
+	})();
+	</script>
+	<?php
+}, 50 );
+
+/* ---------- 5) admin: legacy owners list + preview + batch send ---------- */
+function spacely_up_legacy_owners() {
+	global $wpdb;
+	$authors = $wpdb->get_col( "SELECT DISTINCT post_author FROM {$wpdb->posts} WHERE post_type = 'hp_listing' AND post_status IN ('publish','pending')" );
+	$rows    = array();
+	foreach ( $authors as $uid ) {
+		$user = get_userdata( (int) $uid );
+		if ( ! $user || ! spacely_up_login_allowed( $user ) || spacely_up_is_paid( $uid ) ) {
+			continue;
+		}
+		$ids        = spacely_up_listings( $uid );
+		$listing_id = $ids ? $ids[0] : 0;
+		$rows[]     = array(
+			'uid'      => (int) $uid,
+			'name'     => trim( $user->first_name ) ? trim( $user->first_name ) : $user->display_name,
+			'email'    => $user->user_email,
+			'listing'  => $listing_id,
+			'title'    => $listing_id ? wp_strip_all_tags( get_the_title( $listing_id ) ) : '',
+			'phone'    => $listing_id && '' !== trim( (string) get_post_meta( $listing_id, 'hp_phone_num', true ) ),
+			'unsub'    => (bool) get_user_meta( $uid, 'spacely_no_marketing', true ),
+			'sent'     => (int) get_user_meta( $uid, 'spacely_up_sent', true ),
+			'clicked'  => (int) get_user_meta( $uid, 'spacely_up_clicked', true ),
+			'listings' => count( $ids ),
+		);
+	}
+	return $rows;
+}
+
+/** Email subject + HTML. $row = one row from spacely_up_legacy_owners(). $preview = no real login link. */
+function spacely_up_email( $row, $preview = false ) {
+	$subject   = get_option( 'spacely_up_subject', 'עדכון מספייסלי: מה חדש לבעלי ספייסים' );
+	$basic_url = $preview ? home_url( '/our-plans/' ) : spacely_up_link( $row['uid'], 'basic' );
+	$pro_url   = $preview ? home_url( '/our-plans/' ) : spacely_up_link( $row['uid'], 'pro' );
+	$unsub     = $preview ? home_url( '/' ) : spacely_unsub_link( $row['uid'] );
+	$logo      = 'https://spacely.co.il/wp-content/uploads/2026/08/spacely-logo-tight.png';
+	$btn       = 'display:inline-block;background:#1d1c1d;color:#ffffff;text-decoration:none;padding:14px 26px;border-radius:999px;font-weight:bold;font-size:17px';
+	ob_start();
+	?>
+<div dir="rtl" style="direction:rtl;text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#222;max-width:600px">
+<p>שלום <?php echo esc_html( $row['name'] ); ?>,</p>
+<p>הספייס שלכם <strong><?php echo esc_html( $row['title'] ); ?></strong> מפורסם בספייסלי עוד מהתקופה הראשונה שלנו. תודה שאתם איתנו מההתחלה!</p>
+<p>רצינו לעדכן אתכם במה שחדש באתר. ספייסלי השתנתה: היום בעלי מקצוע (מטפלים, מאמנים, מורים ועוד) מחפשים אצלנו ספייס להשכרה לפי שעה או ססיות (משמרת), ופונים ישירות לבעלי הספייסים. בלי תיווך ובלי עמלה: הלקוח שלכם מהיום הראשון.</p>
+<p>במסלול הישן שלכם הטלפון והכתובת מוסתרים, ולכן בעלי מקצוע לא יכולים לפנות אליכם ישירות. במסלולים בתשלום יש עכשיו:</p>
+<ul style="padding-right:20px;margin:0 0 16px">
+<li><strong>טלפון וכתובת גלויים</strong>, ובעלי מקצוע מתקשרים אליכם ישירות.</li>
+<li><strong>כפתור וואטסאפ חדש</strong> ליד הטלפון: בלחיצה אחת שולחים לכם הודעה מוכנה "ראיתי את הספייס שלך בספייסלי".</li>
+<li><strong>מייל התראה</strong> בכל פעם שמישהו מבקש את הטלפון שלכם, כדי שתדעו שהפנייה הגיעה מספייסלי.</li>
+<li><strong>ספייס מומלץ ומאומת</strong>, שמופיע בין הראשונים בחיפוש בעיר שלכם.</li>
+<li><strong>דוח חודשי</strong> על הצפיות והפניות לספייס שלכם.</li>
+</ul>
+<p><strong>מסלול התנסות:</strong> 29 ₪ + מע"מ לחודש בשלושת החודשים הראשונים, ואחר כך 69 ₪ + מע"מ. בלי התחייבות, אפשר לבטל בכל רגע.</p>
+<p style="margin:24px 0"><a href="<?php echo esc_url( $basic_url ); ?>" style="<?php echo esc_attr( $btn ); ?>">לשדרוג הספייס שלי</a></p>
+<p>הכפתור מחבר אתכם ישר לחשבון שלכם, בלי סיסמה. אחרי התשלום הספייס הקיים שלכם מתעדכן לבד, לא צריך להעלות אותו מחדש.</p>
+<?php if ( ! $row['phone'] ) : ?>
+<p style="color:#8a1f1f">שימו לב: בספייס שלכם עדיין לא שמור מספר טלפון. אחרי השדרוג נבקש מכם להוסיף אותו, כדי שיוכלו להתקשר ולשלוח לכם וואטסאפ.</p>
+<?php endif; ?>
+<p>יש לכם כמה חדרים? <a href="<?php echo esc_url( $pro_url ); ?>">מסלול פרו</a>: 98 ₪ + מע"מ לחודש, עד 3 חדרים.</p>
+<p>שאלות? אפשר פשוט להשיב למייל הזה.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-top:1px solid #e5e5e5;padding-top:12px">
+<tr><td style="text-align:right">
+<a href="https://spacely.co.il/" style="text-decoration:none"><img src="<?php echo esc_url( $logo ); ?>" alt="ספייסלי" width="140" style="display:block;width:140px;height:auto;border:0"></a>
+<div style="margin-top:6px;font-weight:bold">לירון, ספייסלי</div>
+<div><a href="https://spacely.co.il/" style="color:#1d1c1d">spacely.co.il</a></div>
+</td></tr></table>
+<p style="font-size:12px;color:#888;margin-top:20px">קיבלתם את העדכון כי אתם רשומים בספייסלי והספייס שלכם מפורסם באתר. <a href="<?php echo esc_url( $unsub ); ?>" style="color:#888">להסרה מרשימת הדיוור</a>.</p>
+</div>
+	<?php
+	return array( $subject, ob_get_clean() );
+}
+
+function spacely_up_send( $row, $to = '' , $preview = false ) {
+	list( $subject, $html ) = spacely_up_email( $row, $preview );
+	$headers = array( 'Content-Type: text/html; charset=UTF-8', 'Reply-To: info@spacely.co.il' );
+	if ( ! $preview ) {
+		$headers[] = 'List-Unsubscribe: <' . spacely_unsub_link( $row['uid'] ) . '>';
+	}
+	return wp_mail( $to ? $to : $row['email'], $subject, $html, $headers );
+}
+
+add_action( 'admin_menu', function () {
+	add_management_page( 'ספייסלי - שדרוג בעלי ספייסים ישנים', 'ספייסלי - שדרוג ישנים', 'manage_options', 'spacely-legacy-upgrade', function () {
+		$rows = spacely_up_legacy_owners();
+		$msg  = '';
+		if ( isset( $_POST['spacely_up_action'] ) && check_admin_referer( 'spacely_up' ) ) {
+			$action = sanitize_key( wp_unslash( $_POST['spacely_up_action'] ) );
+			if ( 'preview' === $action && $rows ) {
+				$pick = $rows[0];
+				foreach ( $rows as $r ) { if ( ! $r['phone'] ) { $pick = $r; break; } }
+				$ok  = spacely_up_send( $pick, 'info@spacely.co.il', true );
+				$msg = $ok ? 'נשלח מייל דוגמה ל-info@spacely.co.il בלבד (עם הקישורים מוחלפים בדף המסלולים).' : 'שליחת הדוגמה נכשלה.';
+			}
+			if ( 'send' === $action ) {
+				if ( 'שלח' !== trim( (string) wp_unslash( $_POST['confirm'] ?? '' ) ) ) {
+					$msg = 'לא נשלח: יש להקליד "שלח" בתיבת האישור.';
+				} else {
+					$n = 0; $fail = 0;
+					foreach ( $rows as $r ) {
+						if ( $n >= 20 ) { break; }
+						if ( $r['sent'] || $r['unsub'] || ! is_email( $r['email'] ) ) { continue; }
+						if ( spacely_up_send( $r ) ) { update_user_meta( $r['uid'], 'spacely_up_sent', time() ); $n++; } else { $fail++; }
+					}
+					$msg  = 'נשלחו ' . $n . ' מיילים' . ( $fail ? ', ' . $fail . ' נכשלו' : '' ) . '. לחיצה נוספת שולחת את ה-20 הבאים (מי שכבר קיבל לא יקבל שוב).';
+					$rows = spacely_up_legacy_owners();
+				}
+			}
+		}
+		$left = count( array_filter( $rows, function ( $r ) { return ! $r['sent'] && ! $r['unsub']; } ) );
+		?>
+		<div class="wrap" dir="rtl" style="text-align:right">
+		<h1>שדרוג בעלי ספייסים מהמסלול הישן</h1>
+		<?php if ( $msg ) : ?><div class="notice notice-info"><p><?php echo esc_html( $msg ); ?></p></div><?php endif; ?>
+		<p>בעלי ספייסים מפורסמים בלי מנוי פעיל: <strong><?php echo count( $rows ); ?></strong>. בלי טלפון: <strong><?php echo count( array_filter( $rows, function ( $r ) { return ! $r['phone']; } ) ); ?></strong>. עוד לא קיבלו מייל: <strong><?php echo (int) $left; ?></strong>.</p>
+		<form method="post" style="margin:12px 0">
+			<?php wp_nonce_field( 'spacely_up' ); ?>
+			<button class="button" name="spacely_up_action" value="preview">שליחת דוגמה ל-info@ בלבד</button>
+		</form>
+		<form method="post" style="margin:12px 0;padding:12px;border:1px solid #d63638;border-radius:6px;max-width:520px">
+			<?php wp_nonce_field( 'spacely_up' ); ?>
+			<p style="margin-top:0"><strong>שליחה אמיתית לבעלי הספייסים</strong> (20 בכל לחיצה). רק אחרי אישור של לירון.</p>
+			<label>להקליד "שלח": <input type="text" name="confirm" style="width:80px"></label>
+			<button class="button button-primary" name="spacely_up_action" value="send">שליחה</button>
+		</form>
+		<table class="widefat striped" style="max-width:1100px"><thead><tr><th>משתמש</th><th>שם</th><th>מייל</th><th>ספייס</th><th>טלפון</th><th>נשלח</th><th>לחץ</th><th>הוסר</th></tr></thead><tbody>
+		<?php foreach ( $rows as $r ) : ?>
+			<tr>
+				<td><?php echo (int) $r['uid']; ?></td>
+				<td><?php echo esc_html( $r['name'] ); ?></td>
+				<td><?php echo esc_html( $r['email'] ); ?></td>
+				<td><?php echo $r['listing'] ? '<a href="' . esc_url( get_permalink( $r['listing'] ) ) . '" target="_blank">' . esc_html( $r['title'] ) . '</a>' : '—'; ?></td>
+				<td><?php echo $r['phone'] ? 'יש' : '<strong style="color:#d63638">חסר</strong>'; ?></td>
+				<td><?php echo $r['sent'] ? esc_html( wp_date( 'd.m H:i', $r['sent'] ) ) : '—'; ?></td>
+				<td><?php echo $r['clicked'] ? esc_html( wp_date( 'd.m H:i', $r['clicked'] ) ) : '—'; ?></td>
+				<td><?php echo $r['unsub'] ? 'כן' : ''; ?></td>
+			</tr>
+		<?php endforeach; ?>
+		</tbody></table>
+		</div>
+		<?php
+	} );
+} );
+
+}
