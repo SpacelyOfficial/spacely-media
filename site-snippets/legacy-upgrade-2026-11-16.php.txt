@@ -256,6 +256,49 @@ add_action( 'wp_footer', function () {
 	<?php
 }, 50 );
 
+/* ---------- 6) extra 10% on the first payment for owners who came from the email ---------- */
+// Coupon spacely10 (WooCommerce > Coupons): 10% off the first payment only, Basic/Pro, legacy owners' emails only, until 1.12.2026.
+add_action( 'woocommerce_before_calculate_totals', function ( $cart ) {
+	static $running = false;
+	if ( $running || ! is_user_logged_in() || ! function_exists( 'WC' ) || ! WC()->cart || $cart !== WC()->cart ) {
+		return;
+	}
+	if ( is_admin() && ! wp_doing_ajax() ) {
+		return;
+	}
+	if ( ! get_user_meta( get_current_user_id(), 'spacely_up_clicked', true ) ) {
+		return; // only owners who clicked the button in the email
+	}
+	$code = 'spacely10';
+	if ( $cart->has_discount( $code ) || ( WC()->session && WC()->session->get( 'spacely10_tried' ) ) ) {
+		return; // applied already, or tried once (owner may have removed it)
+	}
+	$eligible = false;
+	foreach ( $cart->get_cart() as $item ) {
+		if ( in_array( (int) ( $item['variation_id'] ?? 0 ), array( 6740, 5148 ), true ) ) {
+			$eligible = true;
+			break;
+		}
+	}
+	if ( ! $eligible ) {
+		return;
+	}
+	if ( WC()->session ) {
+		WC()->session->set( 'spacely10_tried', 1 );
+	}
+	$running = true;
+	$cart->apply_coupon( $code );
+	$running = false;
+}, 6 );
+
+add_filter( 'woocommerce_coupon_message', function ( $msg, $msg_code, $coupon ) {
+	return ( $coupon && 'spacely10' === $coupon->get_code() ) ? 'הטבת הוותיקים הופעלה: 10% הנחה נוספת על החודש הראשון.' : $msg;
+}, 10, 3 );
+
+add_filter( 'woocommerce_cart_totals_coupon_label', function ( $label, $coupon ) {
+	return 'spacely10' === $coupon->get_code() ? 'הטבת ותיקים (10% על החודש הראשון)' : $label;
+}, 10, 2 );
+
 /* ---------- 5) admin: legacy owners list + preview + batch send ---------- */
 function spacely_up_legacy_owners() {
 	global $wpdb;
@@ -286,7 +329,7 @@ function spacely_up_legacy_owners() {
 
 /** Email subject + HTML. $row = one row from spacely_up_legacy_owners(). $preview = no real login link. */
 function spacely_up_email( $row, $preview = false ) {
-	$subject   = get_option( 'spacely_up_subject', 'עדכון מספייסלי: מה חדש לבעלי ספייסים' );
+	$subject   = 'עדכון חשוב מספייסלי';
 	$basic_url = $preview ? home_url( '/our-plans/' ) : spacely_up_link( $row['uid'], 'basic' );
 	$pro_url   = $preview ? home_url( '/our-plans/' ) : spacely_up_link( $row['uid'], 'pro' );
 	$unsub     = $preview ? home_url( '/' ) : spacely_unsub_link( $row['uid'] );
@@ -295,25 +338,27 @@ function spacely_up_email( $row, $preview = false ) {
 	ob_start();
 	?>
 <div dir="rtl" style="direction:rtl;text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#222;max-width:600px">
-<p>שלום <?php echo esc_html( $row['name'] ); ?>,</p>
-<p>הספייס שלכם <strong><?php echo esc_html( $row['title'] ); ?></strong> מפורסם בספייסלי עוד מהתקופה הראשונה שלנו. תודה שאתם איתנו מההתחלה!</p>
-<p>רצינו לעדכן אתכם במה שחדש באתר. ספייסלי השתנתה: היום בעלי מקצוע (מטפלים, מאמנים, מורים ועוד) מחפשים אצלנו ספייס להשכרה לפי שעה או ססיות (משמרת), ופונים ישירות לבעלי הספייסים. בלי תיווך ובלי עמלה: הלקוח שלכם מהיום הראשון.</p>
-<p>במסלול הישן שלכם הטלפון והכתובת מוסתרים, ולכן בעלי מקצוע לא יכולים לפנות אליכם ישירות. במסלולים בתשלום יש עכשיו:</p>
+<p>היי <?php echo esc_html( $row['name'] ); ?>,</p>
+<p>קודם כל, רצינו להודות לכם על האמון שנתתם בנו עוד מימי הפיילוט ומתחילת הדרך. הספייס שלכם, <strong><?php echo esc_html( $row['title'] ); ?></strong>, איתנו מההתחלה. לאורך הזמן הקשבנו לכל פידבק ולכל מה שסיפרתם לנו שאתם צריכים, ושינינו את ספייסלי בשבילכם.</p>
+<p><strong>אז מה השתנה?</strong> היום בעלי מקצוע (מטפלים, מאמנים, מורים ועוד) נכנסים לספייסלי כדי למצוא ספייס לפי שעה או ססיות (משמרת), ופונים ישירות לבעל הספייס. בלי תיווך ובלי עמלה: הלקוח שלכם מהיום הראשון.</p>
+<p>הספייס שלכם עדיין במסלול הישן, ולכן הטלפון והכתובת שלכם מוסתרים. בעלי מקצוע שמתעניינים בו פשוט לא יכולים להגיע אליכם. זה הזמן לשדרג. במסלול בתשלום תקבלו:</p>
 <ul style="padding-right:20px;margin:0 0 16px">
 <li><strong>טלפון וכתובת גלויים</strong>, ובעלי מקצוע מתקשרים אליכם ישירות.</li>
-<li><strong>כפתור וואטסאפ חדש</strong> ליד הטלפון: בלחיצה אחת שולחים לכם הודעה מוכנה "ראיתי את הספייס שלך בספייסלי".</li>
+<li><strong>כפתור וואטסאפ</strong> ליד הטלפון: בלחיצה אחת שולחים לכם הודעה מוכנה "ראיתי את הספייס שלך בספייסלי".</li>
 <li><strong>מייל התראה</strong> בכל פעם שמישהו מבקש את הטלפון שלכם, כדי שתדעו שהפנייה הגיעה מספייסלי.</li>
 <li><strong>ספייס מומלץ ומאומת</strong>, שמופיע בין הראשונים בחיפוש בעיר שלכם.</li>
 <li><strong>דוח חודשי</strong> על הצפיות והפניות לספייס שלכם.</li>
 </ul>
-<p><strong>מסלול התנסות:</strong> 29 ₪ + מע"מ לחודש בשלושת החודשים הראשונים, ואחר כך 69 ₪ + מע"מ. בלי התחייבות, אפשר לבטל בכל רגע.</p>
-<p style="margin:24px 0"><a href="<?php echo esc_url( $basic_url ); ?>" style="<?php echo esc_attr( $btn ); ?>">לשדרוג הספייס שלי</a></p>
-<p>הכפתור מחבר אתכם ישר לחשבון שלכם, בלי סיסמה. אחרי התשלום הספייס הקיים שלכם מתעדכן לבד, לא צריך להעלות אותו מחדש.</p>
+<p><strong>ועכשיו להטבה:</strong> מסלול ההתנסות כבר במחיר מיוחד, 29 ₪ + מע"מ לחודש בשלושת החודשים הראשונים (ואחר כך 69 ₪ + מע"מ). ולבעלי הספייסים הוותיקים שלנו יש עוד 10% הנחה על החודש הראשון, כך שהוא יוצא רק 22.10 ₪ + מע"מ. כן, אצלנו יש כפל מבצעים 😉</p>
+<p>ההטבה כבר מופעלת בכפתור ותקפה עד 1.12.2026. בלי התחייבות, אפשר לבטל מתי שרוצים.</p>
+<p style="margin:24px 0"><a href="<?php echo esc_url( $basic_url ); ?>" style="<?php echo esc_attr( $btn ); ?>">אני רוצה לשדרג</a></p>
+<p>הכפתור מכניס אתכם ישר לחשבון שלכם, בלי סיסמה. אחרי התשלום הספייס הקיים שלכם משתדרג מיד, בלי להעלות שום דבר מחדש.</p>
 <?php if ( ! $row['phone'] ) : ?>
-<p style="color:#8a1f1f">שימו לב: בספייס שלכם עדיין לא שמור מספר טלפון. אחרי השדרוג נבקש מכם להוסיף אותו, כדי שיוכלו להתקשר ולשלוח לכם וואטסאפ.</p>
+<p style="color:#8a1f1f">שימו לב: בספייס שלכם עדיין לא שמור מספר טלפון. אחרי השדרוג נבקש מכם להוסיף אותו, כדי שבעלי מקצוע יוכלו להתקשר ולשלוח לכם וואטסאפ.</p>
 <?php endif; ?>
-<p>יש לכם כמה חדרים? <a href="<?php echo esc_url( $pro_url ); ?>">מסלול פרו</a>: 98 ₪ + מע"מ לחודש, עד 3 חדרים.</p>
-<p>שאלות? אפשר פשוט להשיב למייל הזה.</p>
+<p>יש לכם כמה חדרים? <a href="<?php echo esc_url( $pro_url ); ?>">מסלול פרו</a>: 98 ₪ + מע"מ לחודש, עד 3 חדרים, וגם בו 10% הנחה על החודש הראשון.</p>
+<p>נכנסתם לאתר בלי הכפתור? קוד ההטבה הוא <strong>spacely10</strong>.</p>
+<p>שאלות? פשוט השיבו למייל הזה, אני כאן.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-top:1px solid #e5e5e5;padding-top:12px">
 <tr><td style="text-align:right">
 <a href="https://spacely.co.il/" style="text-decoration:none"><img src="<?php echo esc_url( $logo ); ?>" alt="ספייסלי" width="140" style="display:block;width:140px;height:auto;border:0"></a>
