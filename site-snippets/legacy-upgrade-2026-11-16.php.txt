@@ -494,3 +494,25 @@ add_action( 'admin_menu', function () {
 } );
 
 }
+
+/* ---------- 7) checkout: hide the confusing "recurring totals" block (all checkouts) ---------- */
+// Liron 17.11: the "סך כל התשלומים החוזרים" block + "חידוש ראשון" confuses buyers.
+// Replaced by one short line: next charge amount + date. Undo: delete this section.
+add_action( 'init', function () {
+	if ( class_exists( 'WC_Subscriptions_Cart' ) ) {
+		remove_action( 'woocommerce_review_order_after_order_total', 'WC_Subscriptions_Cart::display_recurring_totals' );
+		remove_action( 'woocommerce_cart_totals_after_order_total', 'WC_Subscriptions_Cart::display_recurring_totals' );
+	}
+}, 99 );
+add_action( 'woocommerce_review_order_after_order_total', function () {
+	if ( ! function_exists( 'WC' ) || ! WC()->cart || empty( WC()->cart->recurring_carts ) ) {
+		return;
+	}
+	foreach ( WC()->cart->recurring_carts as $rc ) {
+		if ( empty( $rc->next_payment_date ) ) {
+			continue;
+		}
+		echo '<tr class="spacely-next-charge"><th>החיוב הבא</th><td>' . wc_price( $rc->total ) . ' ב-' . esc_html( date_i18n( 'j.n.Y', strtotime( $rc->next_payment_date ) ) ) . '</td></tr>';
+		break;
+	}
+}, 20 );
