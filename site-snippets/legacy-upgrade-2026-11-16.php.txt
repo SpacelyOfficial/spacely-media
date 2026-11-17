@@ -306,7 +306,7 @@ function spacely_up_legacy_owners() {
 	$rows    = array();
 	foreach ( $authors as $uid ) {
 		$user = get_userdata( (int) $uid );
-		if ( ! $user || ! spacely_up_login_allowed( $user ) || spacely_up_is_paid( $uid ) ) {
+		if ( ! $user || ! spacely_up_login_allowed( $user ) || spacely_up_is_paid( $uid ) || 0 === strpos( $user->user_email, 'info+' ) ) {
 			continue;
 		}
 		$ids        = spacely_up_listings( $uid );
@@ -334,39 +334,63 @@ function spacely_up_email( $row, $preview = false ) {
 	$pro_url   = $preview ? home_url( '/our-plans/' ) : spacely_up_link( $row['uid'], 'pro' );
 	$unsub     = $preview ? home_url( '/' ) : spacely_unsub_link( $row['uid'] );
 	$logo      = 'https://spacely.co.il/wp-content/uploads/2026/08/spacely-logo-tight.png';
-	$btn       = 'display:inline-block;background:#1d1c1d;color:#ffffff;text-decoration:none;padding:14px 26px;border-radius:999px;font-weight:bold;font-size:17px';
+	$btn       = 'display:inline-block;background:#1C1917;color:#ffffff;text-decoration:none;padding:15px 34px;border-radius:999px;font-weight:bold;font-size:18px';
+	$bullets = array(
+		array( 'טלפון וכתובת גלויים', 'בעלי מקצוע מתקשרים אליכם ישירות.' ),
+		array( 'כפתור וואטסאפ', 'בלחיצה אחת שולחים לכם הודעה מוכנה "ראיתי את הספייס שלך בספייסלי".' ),
+		array( 'מייל התראה', 'בכל פעם שמישהו מבקש את הטלפון שלכם, כדי שתדעו שהפנייה הגיעה מספייסלי.' ),
+		array( 'ספייס מומלץ ומאומת', 'מופיע בין הראשונים בחיפוש בעיר שלכם.' ),
+		array( 'דוח חודשי', 'על הצפיות והפניות לספייס שלכם.' ),
+		array( 'מודעה אחת לכל כתובת', 'במסלול הישן כל חדר היה מודעה נפרדת. עכשיו כל החדרים והתמונות של המקום במודעה אחת, ובמסלול ההתנסות עד 2 ספייסים בכתובות שונות.' ),
+	);
+	$font = "font-family:Arial,Helvetica,sans-serif";
 	ob_start();
 	?>
-<div dir="rtl" style="direction:rtl;text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#222;max-width:600px">
-<p>היי <?php echo esc_html( $row['name'] ); ?>,</p>
-<p>קודם כל, רצינו להודות לכם על האמון שנתתם בנו עוד מימי הפיילוט ומתחילת הדרך. הספייס שלכם, <strong><?php echo esc_html( $row['title'] ); ?></strong>, איתנו מההתחלה. לאורך הזמן הקשבנו לכל פידבק ולכל מה שסיפרתם לנו שאתם צריכים, ושינינו את ספייסלי בשבילכם. ובגלל שאתם איתנו מההתחלה, הכנו לכם הטבה מיוחדת 🎁 (פרטים בהמשך).</p>
-<p><strong>אז מה השתנה?</strong> היום בעלי מקצוע (מטפלים, מאמנים, מורים ועוד) נכנסים לספייסלי כדי למצוא ספייס לפי שעה או ססיות (משמרת), ופונים ישירות לבעל הספייס. בלי תיווך ובלי עמלה: הלקוח שלכם מהיום הראשון.</p>
-<p>הספייס שלכם עדיין במסלול הישן, ולכן הטלפון והכתובת שלכם מוסתרים. בעלי מקצוע שמתעניינים בו פשוט לא יכולים להגיע אליכם. זה הזמן לשדרג. במסלולים החדשים תקבלו:</p>
-<ul style="padding-right:20px;margin:0 0 16px">
-<li><strong>טלפון וכתובת גלויים</strong>, ובעלי מקצוע מתקשרים אליכם ישירות.</li>
-<li><strong>כפתור וואטסאפ</strong>: בלחיצה אחת שולחים לכם הודעה מוכנה "ראיתי את הספייס שלך בספייסלי".</li>
-<li><strong>מייל התראה</strong> בכל פעם שמישהו מבקש את הטלפון שלכם, כדי שתדעו שהפנייה הגיעה מספייסלי.</li>
-<li><strong>ספייס מומלץ ומאומת</strong>, שמופיע בין הראשונים בחיפוש בעיר שלכם.</li>
-<li><strong>דוח חודשי</strong> על הצפיות והפניות לספייס שלכם.</li>
-<li><strong>מודעה אחת לכל כתובת:</strong> במסלול הישן כל חדר היה מודעה נפרדת. עכשיו מעלים את כל החדרים והתמונות של המקום במודעה אחת, ובמסלול ההתנסות אפשר לפרסם עד 2 ספייסים בכתובות שונות.</li>
-</ul>
-<p><strong>ועכשיו להטבה, במיוחד בשבילכם:</strong> 10% הנחה נוספת על החודש הראשון, מעבר להטבה שכבר קיימת. מסלול ההתנסות עולה 29 ₪ + מע"מ לחודש בשלושת החודשים הראשונים (ואחר כך 69 ₪ + מע"מ). כן, אצלנו יש כפל מבצעים 😉</p>
-<p>ההטבה כבר מופעלת בכפתור ותקפה עד 1.12.2026. בלי התחייבות, אפשר לבטל מתי שרוצים.</p>
-<p style="margin:24px 0"><a href="<?php echo esc_url( $basic_url ); ?>" style="<?php echo esc_attr( $btn ); ?>">אני רוצה לשדרג</a></p>
-<p>הכפתור מכניס אתכם ישר לחשבון שלכם, בלי סיסמה. אחרי התשלום הספייס הקיים שלכם משתדרג מיד, בלי להעלות שום דבר מחדש.</p>
-<?php if ( ! $row['phone'] ) : ?>
-<p style="color:#8a1f1f">שימו לב: בספייס שלכם עדיין לא שמור מספר טלפון. אחרי השדרוג נבקש מכם להוסיף אותו, כדי שבעלי מקצוע יוכלו להתקשר ולשלוח לכם וואטסאפ.</p>
-<?php endif; ?>
-<p>יש לכם יותר מקומות? <a href="<?php echo esc_url( $pro_url ); ?>">מסלול פרו</a>: 98 ₪ + מע"מ לחודש, עד 3 ספייסים בכתובות שונות, וגם בו 10% הנחה על החודש הראשון.</p>
-<p>נכנסתם לאתר בלי הכפתור? קוד ההטבה הוא <strong>spacely10</strong>.</p>
-<p>שאלות? פשוט השיבו למייל הזה, אני כאן.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-top:1px solid #e5e5e5;padding-top:12px">
-<tr><td style="text-align:right">
-<a href="https://spacely.co.il/" style="text-decoration:none"><img src="<?php echo esc_url( $logo ); ?>" alt="ספייסלי" width="140" style="display:block;width:140px;height:auto;border:0"></a>
-<div style="margin-top:6px"><strong>לירון</strong>, מנכ"לית ובעלים, וכל צוות ספייסלי</div>
-<div><a href="https://spacely.co.il/" style="color:#1d1c1d">spacely.co.il</a></div>
+<div dir="rtl" style="direction:rtl;background:#FAF9F5;padding:24px 12px;<?php echo $font; ?>">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #E8DCC4">
+<tr><td style="padding:28px 28px 8px;text-align:center">
+<a href="https://spacely.co.il/" style="text-decoration:none"><img src="<?php echo esc_url( $logo ); ?>" alt="ספייסלי" width="150" style="display:inline-block;width:150px;height:auto;border:0"></a>
+</td></tr>
+<tr><td dir="rtl" style="padding:8px 28px 0;text-align:right;font-size:16px;line-height:1.7;color:#1C1917">
+<p style="margin:0 0 14px;font-size:20px;font-weight:bold">היי <?php echo esc_html( $row['name'] ); ?>,</p>
+<p style="margin:0 0 14px">קודם כל, רצינו להודות לכם על האמון שנתתם בנו עוד מימי הפיילוט ומתחילת הדרך. הספייס שלכם, <strong><?php echo esc_html( $row['title'] ); ?></strong>, איתנו מההתחלה. לאורך הזמן הקשבנו לכל פידבק ולכל מה שסיפרתם לנו שאתם צריכים, ושינינו את ספייסלי בשבילכם.</p>
+<p style="margin:0 0 18px;background:#FBF6EC;border-radius:10px;padding:10px 14px;color:#8B5E3C;font-weight:bold">🎁 ובגלל שאתם איתנו מההתחלה, הכנו לכם הטבה מיוחדת (פרטים בהמשך).</p>
+<p style="margin:0 0 6px;font-size:18px;font-weight:bold">אז מה השתנה?</p>
+<p style="margin:0 0 14px">היום בעלי מקצוע (מטפלים, מאמנים, מורים ועוד) נכנסים לספייסלי כדי למצוא ספייס לפי שעה או ססיות (משמרת), ופונים ישירות לבעל הספייס. בלי תיווך ובלי עמלה: הלקוח שלכם מהיום הראשון.</p>
+<p style="margin:0 0 14px">הספייס שלכם עדיין במסלול הישן, ולכן הטלפון והכתובת שלכם מוסתרים. בעלי מקצוע שמתעניינים בו פשוט לא יכולים להגיע אליכם. <strong>זה הזמן לשדרג.</strong></p>
+<p style="margin:0 0 8px;font-size:18px;font-weight:bold">במסלולים החדשים תקבלו:</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
+<?php foreach ( $bullets as $bl ) : ?>
+<tr><td valign="top" style="width:30px;padding:6px 0 6px 8px"><span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:11px;background:#C5A059;color:#ffffff;text-align:center;font-size:13px;font-weight:bold">✓</span></td>
+<td dir="rtl" style="padding:6px 0;text-align:right;font-size:15px;line-height:1.6;color:#1C1917"><strong><?php echo esc_html( $bl[0] ); ?>:</strong> <?php echo esc_html( $bl[1] ); ?></td></tr>
+<?php endforeach; ?>
+</table>
+</td></tr>
+<tr><td style="padding:0 20px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FBF6EC;border:1px solid #E8DCC4;border-radius:14px">
+<tr><td dir="rtl" style="padding:22px 20px;text-align:center;font-size:16px;line-height:1.7;color:#1C1917">
+<p style="margin:0 0 8px;font-size:20px;font-weight:bold;color:#8B5E3C">🎁 ועכשיו להטבה, במיוחד בשבילכם</p>
+<p style="margin:0 0 6px;font-size:22px;font-weight:bold">10% הנחה נוספת על החודש הראשון</p>
+<p style="margin:0 0 12px">מעבר להטבה שכבר קיימת: מסלול ההתנסות עולה 29 ₪ + מע"מ לחודש בשלושת החודשים הראשונים (ואחר כך 69 ₪ + מע"מ). כן, אצלנו יש כפל מבצעים 😉</p>
+<p style="margin:0 0 18px"><a href="<?php echo esc_url( $basic_url ); ?>" style="<?php echo esc_attr( $btn ); ?>">אני רוצה לשדרג</a></p>
+<p style="margin:0;font-size:14px;color:#5c5c5c">ההטבה כבר מופעלת בכפתור ותקפה עד 1.12.2026. בלי התחייבות, אפשר לבטל מתי שרוצים.</p>
 </td></tr></table>
-<p style="font-size:12px;color:#888;margin-top:20px">קיבלתם את העדכון כי אתם רשומים בספייסלי והספייס שלכם מפורסם באתר. <a href="<?php echo esc_url( $unsub ); ?>" style="color:#888">להסרה מרשימת הדיוור</a>.</p>
+</td></tr>
+<tr><td dir="rtl" style="padding:18px 28px 0;text-align:right;font-size:14px;line-height:1.7;color:#5c5c5c">
+<p style="margin:0 0 10px">הכפתור מכניס אתכם ישר לחשבון שלכם, בלי סיסמה. אחרי התשלום הספייס הקיים שלכם משתדרג מיד, בלי להעלות שום דבר מחדש.</p>
+<?php if ( ! $row['phone'] ) : ?>
+<p style="margin:0 0 10px;color:#8a1f1f">שימו לב: בספייס שלכם עדיין לא שמור מספר טלפון. אחרי השדרוג נבקש מכם להוסיף אותו, כדי שבעלי מקצוע יוכלו להתקשר ולשלוח לכם וואטסאפ.</p>
+<?php endif; ?>
+<p style="margin:0 0 10px">יש לכם יותר מקומות? <a href="<?php echo esc_url( $pro_url ); ?>" style="color:#8B5E3C;font-weight:bold">מסלול פרו</a>: 98 ₪ + מע"מ לחודש, עד 3 ספייסים בכתובות שונות, וגם בו 10% הנחה על החודש הראשון.</p>
+<p style="margin:0 0 10px">נכנסתם לאתר בלי הכפתור? קוד ההטבה הוא <strong style="color:#1C1917">spacely10</strong>.</p>
+<p style="margin:0 0 10px">שאלות? פשוט השיבו למייל הזה, אני כאן.</p>
+</td></tr>
+<tr><td dir="rtl" style="padding:14px 28px 26px;text-align:right;border-top:1px solid #F0E8DA">
+<div style="font-size:15px;color:#1C1917"><strong>לירון</strong>, מנכ"לית ובעלים, וכל צוות ספייסלי</div>
+<div style="font-size:14px"><a href="https://spacely.co.il/" style="color:#8B5E3C">spacely.co.il</a></div>
+</td></tr>
+</table>
+<p dir="rtl" style="max-width:600px;margin:14px auto 0;text-align:center;font-size:12px;color:#888">קיבלתם את העדכון כי אתם רשומים בספייסלי והספייס שלכם מפורסם באתר. <a href="<?php echo esc_url( $unsub ); ?>" style="color:#888">להסרה מרשימת הדיוור</a>.</p>
 </div>
 	<?php
 	return array( $subject, ob_get_clean() );
@@ -387,11 +411,26 @@ add_action( 'admin_menu', function () {
 		$msg  = '';
 		if ( isset( $_POST['spacely_up_action'] ) && check_admin_referer( 'spacely_up' ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['spacely_up_action'] ) );
-			if ( 'preview' === $action && $rows ) {
-				$pick = $rows[0];
-				foreach ( $rows as $r ) { if ( ! $r['phone'] ) { $pick = $r; break; } }
-				$ok  = spacely_up_send( $pick, 'info@spacely.co.il', true );
-				$msg = $ok ? 'נשלח מייל דוגמה ל-info@spacely.co.il בלבד (עם הקישורים מוחלפים בדף המסלולים).' : 'שליחת הדוגמה נכשלה.';
+			if ( 'preview' === $action ) {
+				// Test owner (info+uptest@): real personal button, sent to info@ only, not marked as sent.
+				$t = get_user_by( 'email', 'info+uptest@spacely.co.il' );
+				if ( $t && spacely_up_login_allowed( $t ) ) {
+					$tids = spacely_up_listings( $t->ID );
+					$trow = array(
+						'uid'   => (int) $t->ID,
+						'name'  => trim( $t->first_name ) ? trim( $t->first_name ) : $t->display_name,
+						'email' => 'info@spacely.co.il',
+						'title' => $tids ? wp_strip_all_tags( get_the_title( $tids[0] ) ) : 'ספייס בדיקה',
+						'phone' => $tids && '' !== trim( (string) get_post_meta( $tids[0], 'hp_phone_num', true ) ),
+					);
+					$ok  = spacely_up_send( $trow, 'info@spacely.co.il', false );
+					$msg = $ok ? 'נשלח מייל דוגמה ל-info@ עם כפתור אישי אמיתי של משתמש הבדיקה. לפתוח בחלון גלישה בסתר או בנייד (לא כשמחוברים כמנהל).' : 'שליחת הדוגמה נכשלה.';
+				} elseif ( $rows ) {
+					$pick = $rows[0];
+					foreach ( $rows as $r ) { if ( ! $r['phone'] ) { $pick = $r; break; } }
+					$ok  = spacely_up_send( $pick, 'info@spacely.co.il', true );
+					$msg = $ok ? 'נשלח מייל דוגמה ל-info@spacely.co.il בלבד (עם הקישורים מוחלפים בדף המסלולים).' : 'שליחת הדוגמה נכשלה.';
+				}
 			}
 			if ( 'send' === $action ) {
 				if ( 'שלח' !== trim( (string) wp_unslash( $_POST['confirm'] ?? '' ) ) ) {
