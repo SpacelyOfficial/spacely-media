@@ -362,7 +362,7 @@ function spacely_up_email( $row, $preview = false ) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
 <?php foreach ( $bullets as $bl ) : ?>
 <tr><td valign="top" style="width:30px;padding:6px 0 6px 8px"><span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:11px;background:#C5A059;color:#ffffff;text-align:center;font-size:13px;font-weight:bold">✓</span></td>
-<td dir="rtl" style="padding:6px 0;text-align:right;font-size:15px;line-height:1.6;color:#1C1917"><strong><?php echo esc_html( $bl[0] ); ?>:</strong> <?php echo esc_html( $bl[1] ); ?></td></tr>
+<td dir="rtl" style="padding:6px 0;text-align:right;font-size:16px;line-height:1.6;color:#1C1917"><strong><?php echo esc_html( $bl[0] ); ?>:</strong> <?php echo esc_html( $bl[1] ); ?></td></tr>
 <?php endforeach; ?>
 </table>
 </td></tr>
@@ -376,7 +376,7 @@ function spacely_up_email( $row, $preview = false ) {
 <p style="margin:0;font-size:14px;color:#5c5c5c">ההטבה כבר מופעלת בכפתור ותקפה עד 1.12.2026. בלי התחייבות, אפשר לבטל מתי שרוצים.</p>
 </td></tr></table>
 </td></tr>
-<tr><td dir="rtl" style="padding:18px 28px 0;text-align:right;font-size:14px;line-height:1.7;color:#5c5c5c">
+<tr><td dir="rtl" style="padding:18px 28px 0;text-align:right;font-size:16px;line-height:1.7;color:#1C1917">
 <p style="margin:0 0 10px">הכפתור מכניס אתכם ישר לחשבון שלכם, בלי סיסמה. אחרי התשלום הספייס הקיים שלכם משתדרג מיד, בלי להעלות שום דבר מחדש.</p>
 <?php if ( ! $row['phone'] ) : ?>
 <p style="margin:0 0 10px;color:#8a1f1f">שימו לב: בספייס שלכם עדיין לא שמור מספר טלפון. אחרי השדרוג נבקש מכם להוסיף אותו, כדי שבעלי מקצוע יוכלו להתקשר ולשלוח לכם וואטסאפ.</p>
@@ -386,8 +386,8 @@ function spacely_up_email( $row, $preview = false ) {
 <p style="margin:0 0 10px">שאלות? פשוט השיבו למייל הזה, אני כאן.</p>
 </td></tr>
 <tr><td dir="rtl" style="padding:14px 28px 26px;text-align:right;border-top:1px solid #F0E8DA">
-<div style="font-size:15px;color:#1C1917"><strong>לירון</strong>, מנכ"לית ובעלים, וכל צוות ספייסלי</div>
-<div style="font-size:14px"><a href="https://spacely.co.il/" style="color:#8B5E3C">spacely.co.il</a></div>
+<div style="font-size:17px;color:#1C1917"><strong>לירון</strong>, מנכ"לית ובעלים, וכל צוות ספייסלי</div>
+<div style="font-size:15px"><a href="https://spacely.co.il/" style="color:#8B5E3C">spacely.co.il</a></div>
 </td></tr>
 </table>
 <p dir="rtl" style="max-width:600px;margin:14px auto 0;text-align:center;font-size:12px;color:#888">קיבלתם את העדכון כי אתם רשומים בספייסלי והספייס שלכם מפורסם באתר. <a href="<?php echo esc_url( $unsub ); ?>" style="color:#888">להסרה מרשימת הדיוור</a>.</p>
