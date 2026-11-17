@@ -393,7 +393,6 @@ function spacely_up_email( $row, $preview = false ) {
 <?php if ( ! $row['phone'] ) : ?>
 <p style="margin:0 0 10px;color:#8a1f1f">שימו לב: בספייס שלכם עדיין לא שמור מספר טלפון. אחרי השדרוג נבקש מכם להוסיף אותו, כדי שבעלי מקצוע יוכלו להתקשר ולשלוח לכם וואטסאפ.</p>
 <?php endif; ?>
-<p style="margin:0 0 10px">יש לכם יותר מקומות? <a href="<?php echo esc_url( $pro_url ); ?>" style="color:#8B5E3C;font-weight:bold">מסלול פרו</a>: 98 ₪ + מע"מ לחודש, עד 3 ספייסים בכתובות שונות, וגם בו 10% הנחה על החודש הראשון.</p>
 <p style="margin:0 0 10px">נכנסתם לאתר בלי הכפתור? קוד ההטבה הוא <strong style="color:#1C1917">spacely10</strong>.</p>
 <p style="margin:0 0 10px">שאלות? פשוט השיבו למייל הזה, אני כאן.</p>
 </td></tr>
