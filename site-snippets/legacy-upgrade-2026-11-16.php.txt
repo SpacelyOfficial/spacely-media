@@ -449,28 +449,33 @@ add_action( 'admin_menu', function () {
 				} else {
 					$n = 0; $fail = 0;
 					foreach ( $rows as $r ) {
-						if ( $n >= 20 ) { break; }
+						if ( $n >= 10 ) { break; }
 						if ( $r['sent'] || $r['unsub'] || ! is_email( $r['email'] ) ) { continue; }
 						if ( spacely_up_send( $r ) ) { update_user_meta( $r['uid'], 'spacely_up_sent', time() ); $n++; } else { $fail++; }
 					}
-					$msg  = 'נשלחו ' . $n . ' מיילים' . ( $fail ? ', ' . $fail . ' נכשלו' : '' ) . '. לחיצה נוספת שולחת את ה-20 הבאים (מי שכבר קיבל לא יקבל שוב).';
+					$msg  = 'נשלחו ' . $n . ' מיילים' . ( $fail ? ', ' . $fail . ' נכשלו' : '' ) . '. לחיצה נוספת שולחת את ה-10 הבאים (מי שכבר קיבל לא יקבל שוב).';
 					$rows = spacely_up_legacy_owners();
 				}
 			}
 		}
 		$left = count( array_filter( $rows, function ( $r ) { return ! $r['sent'] && ! $r['unsub']; } ) );
+		$next = array();
+		foreach ( spacely_up_schedule_times() as $ts ) {
+			if ( wp_next_scheduled( 'spacely_up_cron_batch', array( $ts ) ) ) { $next[] = wp_date( 'j.n H:i', $ts ); }
+		}
 		?>
 		<div class="wrap" dir="rtl" style="text-align:right">
 		<h1>שדרוג בעלי ספייסים מהמסלול הישן</h1>
 		<?php if ( $msg ) : ?><div class="notice notice-info"><p><?php echo esc_html( $msg ); ?></p></div><?php endif; ?>
 		<p>בעלי ספייסים מפורסמים בלי מנוי פעיל: <strong><?php echo count( $rows ); ?></strong>. בלי טלפון: <strong><?php echo count( array_filter( $rows, function ( $r ) { return ! $r['phone']; } ) ); ?></strong>. עוד לא קיבלו מייל: <strong><?php echo (int) $left; ?></strong>.</p>
+		<p>שליחות מתוזמנות (10 בכל אחת): <strong><?php echo $next ? esc_html( implode( ', ', $next ) ) : 'אין'; ?></strong></p>
 		<form method="post" style="margin:12px 0">
 			<?php wp_nonce_field( 'spacely_up' ); ?>
 			<button class="button" name="spacely_up_action" value="preview">שליחת דוגמה ל-info@ בלבד</button>
 		</form>
 		<form method="post" style="margin:12px 0;padding:12px;border:1px solid #d63638;border-radius:6px;max-width:520px">
 			<?php wp_nonce_field( 'spacely_up' ); ?>
-			<p style="margin-top:0"><strong>שליחה אמיתית לבעלי הספייסים</strong> (20 בכל לחיצה). רק אחרי אישור של לירון.</p>
+			<p style="margin-top:0"><strong>שליחה אמיתית לבעלי הספייסים</strong> (10 בכל לחיצה). רק אחרי אישור של לירון.</p>
 			<label>להקליד "שלח": <input type="text" name="confirm" style="width:80px"></label>
 			<button class="button button-primary" name="spacely_up_action" value="send">שליחה</button>
 		</form>
@@ -516,3 +521,34 @@ add_action( 'woocommerce_review_order_after_order_total', function () {
 		break;
 	}
 }, 20 );
+
+/* ---------- 8) scheduled batches of 10 (Liron approved 17.11.2026 17:07) ---------- */
+// 17.11 17:30, 18:00; 18.11 09:00, 09:30, 10:00 Israel time. First 10 were sent by hand.
+function spacely_up_schedule_times() {
+	return array( 1794929400, 1794931200, 1794985200, 1794987000, 1794988800 );
+}
+add_action( 'init', function () {
+	if ( get_option( 'spacely_up_sched_v1' ) ) {
+		return;
+	}
+	foreach ( spacely_up_schedule_times() as $ts ) {
+		if ( $ts > time() - 600 && ! wp_next_scheduled( 'spacely_up_cron_batch', array( $ts ) ) ) {
+			wp_schedule_single_event( max( $ts, time() + 60 ), 'spacely_up_cron_batch', array( $ts ) );
+		}
+	}
+	update_option( 'spacely_up_sched_v1', 1, false );
+} );
+add_action( 'spacely_up_cron_batch', function ( $slot = 0 ) {
+	if ( ! function_exists( 'spacely_up_legacy_owners' ) || ! function_exists( 'spacely_up_send' ) ) {
+		return;
+	}
+	$n = 0;
+	foreach ( spacely_up_legacy_owners() as $r ) {
+		if ( $n >= 10 ) { break; }
+		if ( $r['sent'] || $r['unsub'] || ! is_email( $r['email'] ) ) { continue; }
+		if ( spacely_up_send( $r ) ) { update_user_meta( $r['uid'], 'spacely_up_sent', time() ); $n++; }
+	}
+	$log   = (array) get_option( 'spacely_up_cron_log', array() );
+	$log[] = wp_date( 'j.n H:i' ) . ': ' . $n;
+	update_option( 'spacely_up_cron_log', $log, false );
+} );
