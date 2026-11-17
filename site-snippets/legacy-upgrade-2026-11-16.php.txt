@@ -374,7 +374,7 @@ function spacely_up_email( $row, $preview = false ) {
 
 function spacely_up_send( $row, $to = '' , $preview = false ) {
 	list( $subject, $html ) = spacely_up_email( $row, $preview );
-	$headers = array( 'Content-Type: text/html; charset=UTF-8', 'Reply-To: info@spacely.co.il' );
+	$headers = array( 'Content-Type: text/html; charset=UTF-8', 'From: ספייסלי <info@spacely.co.il>', 'Reply-To: info@spacely.co.il' );
 	if ( ! $preview ) {
 		$headers[] = 'List-Unsubscribe: <' . spacely_unsub_link( $row['uid'] ) . '>';
 	}
