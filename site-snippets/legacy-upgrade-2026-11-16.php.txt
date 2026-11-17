@@ -270,8 +270,8 @@ add_action( 'woocommerce_before_calculate_totals', function ( $cart ) {
 		return; // only owners who clicked the button in the email
 	}
 	$code = 'spacely10';
-	if ( $cart->has_discount( $code ) || ( WC()->session && WC()->session->get( 'spacely10_tried' ) ) ) {
-		return; // applied already, or tried once (owner may have removed it)
+	if ( $cart->has_discount( $code ) || ( WC()->session && WC()->session->get( 'spacely10_removed' ) ) ) {
+		return; // applied already, or the owner removed it on purpose
 	}
 	$eligible = false;
 	foreach ( $cart->get_cart() as $item ) {
@@ -283,13 +283,25 @@ add_action( 'woocommerce_before_calculate_totals', function ( $cart ) {
 	if ( ! $eligible ) {
 		return;
 	}
-	if ( WC()->session ) {
-		WC()->session->set( 'spacely10_tried', 1 );
-	}
 	$running = true;
 	$cart->apply_coupon( $code );
 	$running = false;
 }, 6 );
+// Owner removed the coupon by hand: don't force it back.
+add_action( 'woocommerce_removed_coupon', function ( $code ) {
+	if ( 'spacely10' === $code && function_exists( 'WC' ) && WC()->session ) {
+		WC()->session->set( 'spacely10_removed', 1 );
+	}
+} );
+// Safety net: on the checkout page, recalculate once so the coupon is applied even if the cart was built before login.
+add_action( 'template_redirect', function () {
+	if ( ! function_exists( 'is_checkout' ) || ! is_checkout() || ! is_user_logged_in() || ! WC()->cart || WC()->cart->is_empty() ) {
+		return;
+	}
+	if ( get_user_meta( get_current_user_id(), 'spacely_up_clicked', true ) && ! WC()->cart->has_discount( 'spacely10' ) ) {
+		WC()->cart->calculate_totals();
+	}
+}, 20 );
 
 add_filter( 'woocommerce_coupon_message', function ( $msg, $msg_code, $coupon ) {
 	return ( $coupon && 'spacely10' === $coupon->get_code() ) ? 'הטבת הוותיקים הופעלה: 10% הנחה נוספת על החודש הראשון.' : $msg;
@@ -386,7 +398,7 @@ function spacely_up_email( $row, $preview = false ) {
 <p style="margin:0 0 10px">שאלות? פשוט השיבו למייל הזה, אני כאן.</p>
 </td></tr>
 <tr><td dir="rtl" style="padding:14px 28px 26px;text-align:right;border-top:1px solid #F0E8DA">
-<div style="font-size:17px;color:#1C1917"><strong>לירון</strong>, מנכ"לית ובעלים, וכל צוות ספייסלי</div>
+<div style="font-size:17px;line-height:1.6;color:#1C1917"><strong>לירון בן יהודה</strong><br>מנכ"לית ובעלים, ספייסלי<br>והצוות</div>
 <div style="font-size:15px"><a href="https://spacely.co.il/" style="color:#8B5E3C">spacely.co.il</a></div>
 </td></tr>
 </table>
