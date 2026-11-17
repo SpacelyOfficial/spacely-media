@@ -363,7 +363,9 @@ function spacely_up_email( $row, $preview = false ) {
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-top:1px solid #e5e5e5;padding-top:12px">
 <tr><td style="text-align:right">
 <a href="https://spacely.co.il/" style="text-decoration:none"><img src="<?php echo esc_url( $logo ); ?>" alt="ספייסלי" width="140" style="display:block;width:140px;height:auto;border:0"></a>
-<div style="margin-top:6px;font-weight:bold">לירון, ספייסלי</div>
+<div style="margin-top:6px;font-weight:bold">לירון</div>
+<div>מנכ"לית ובעלים, ספייסלי</div>
+<div>וכל צוות ספייסלי</div>
 <div><a href="https://spacely.co.il/" style="color:#1d1c1d">spacely.co.il</a></div>
 </td></tr></table>
 <p style="font-size:12px;color:#888;margin-top:20px">קיבלתם את העדכון כי אתם רשומים בספייסלי והספייס שלכם מפורסם באתר. <a href="<?php echo esc_url( $unsub ); ?>" style="color:#888">להסרה מרשימת הדיוור</a>.</p>
